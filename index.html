@@ -134,6 +134,7 @@ button{cursor:pointer;font-family:var(--ff-body)}
 .timer-fill.warning{background:var(--red)}
 .pdf-viewer-wrap{margin:0 1.2rem 1rem;border-radius:var(--r);overflow:hidden;border:1px solid var(--border);position:relative}
 .pdf-shield{position:absolute;inset:0;z-index:10;background:transparent;pointer-events:none}
+.pdf-corner-block{position:absolute;top:0;right:0;width:56px;height:56px;z-index:11;background:#4a4f57;pointer-events:auto;touch-action:none}
 .pdf-watermark{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden}
 .pdf-watermark-text{font-family:var(--ff-head);font-size:1.1rem;color:rgba(201,168,76,.12);transform:rotate(-35deg);white-space:nowrap;letter-spacing:.05em;line-height:2.8;text-align:center;width:200%;word-break:break-all}
 .pdf-frame{width:100%;height:72vh;border:none;display:block}
@@ -420,6 +421,7 @@ button{cursor:pointer;font-family:var(--ff-body)}
   </div>
   <div class="pdf-viewer-wrap protected-content" id="pdfViewerWrap">
     <div class="pdf-shield"></div>
+    <div class="pdf-corner-block" oncontextmenu="return false"></div>
     <div class="pdf-watermark"><div class="pdf-watermark-text" id="pdfWatermarkText">Sciences Physiques 1ère D · Prof TONI · APERÇU</div></div>
     <iframe id="pdfFrame" class="pdf-frame" src="" allowfullscreen onload="var o=document.getElementById('pdfLoadingOverlay');if(o)o.classList.add('hidden')"></iframe>
     <div class="pdf-loading-overlay" id="pdfLoadingOverlay">
@@ -600,7 +602,7 @@ button{cursor:pointer;font-family:var(--ff-body)}
 <script type="module">
 // ── Firebase SDK ────────────────────────────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc,
+import { initializeFirestore, doc, getDoc, setDoc, updateDoc,
          collection, getDocs, addDoc, query, where
        } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
@@ -616,7 +618,7 @@ const firebaseConfig = {
 };
 
 const app  = initializeApp(firebaseConfig);
-const db   = getFirestore(app);
+const db   = initializeFirestore(app,{experimentalAutoDetectLongPolling:true});
 const auth = getAuth(app);
 
 // ── Config ──────────────────────────────────────────────────────────────────
@@ -828,7 +830,10 @@ async function checkCode(){
 
   try{
     const docRef=doc(db,'codes_sp_1d',raw);
-    const docSnap=await getDoc(docRef);
+    const docSnap=await Promise.race([
+      getDoc(docRef),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),15000))
+    ]);
     inp.disabled=false;
 
     if(!docSnap.exists()){
